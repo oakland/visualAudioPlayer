@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Oakland music visualization player</title>
+	<style>
+		body {
+            background-color: #272822;
+		}
+	</style>
+</head>
+<body>
+	<input type="file" id="file-input" />
+	<button id="stop">stop interval</button>
+	<div>
+		<canvas id="canvas" width="800" height="350">Your browser does not support canvas.</canvas>
+	</div>
+	<script>
+		// first, I need to get the files which is uploaded by input element;
+		// then, I need to use the fileReader to read the file
+		// then decode the file using AudioContext
+
+		function rand(min, max) {
+			return Math.floor(Math.random() * (max - min) + min);
+		}
+
+		// array
+
+		// ini
+		let timer = null;
+		let musicFile = null;
+		const audioContext = new AudioContext();
+
+		// 1. get the file that is uploaded
+		const fileInput = document.querySelector("#file-input");
+		fileInput.addEventListener("change", function(e) {
+			musicFile = this.files[0];
+			fr.readAsArrayBuffer(musicFile);
+		});
+
+		// 2. read the file and decode it into audio array buffer using audioContext.decodeAudioData, get buffer
+		const fr = new FileReader();
+		fr.addEventListener("load", function(e) {
+			const fileResult = e.target.result;
+			audioContext.decodeAudioData(fileResult, function(buffer) {
+				// do sth with buffer using audioContext(src, analyser)
+				doSthWithBuffer(buffer);
+			});
+		});
+
+		let audioBufferSrc = audioContext.createBufferSource();
+		let analyser = audioContext.createAnalyser();
+
+		audioBufferSrc.connect(analyser);
+		analyser.connect(audioContext.destination);
+		analyser.fftSize = 256;
+
+		function doSthWithBuffer(buffer) {
+			audioBufferSrc.buffer = buffer;
+			audioBufferSrc.start(0);
+			// timer = setInterval(doSthWithAnalyser, 100, analyser);
+			doSthWithAnalyser();
+		}
+
+		const bufferLength = analyser.frequencyBinCount; // 1024
+		frequencyData = new Uint8Array(bufferLength);
+
+		// requestAnimationFrame 请求的应该是一个状态不断变化的函数，整个这个 app 里变化的就是 analyser.getByteFrequencyData(frequencyData) 这个函数所以
+		function doSthWithAnalyser() {
+			requestAnimationFrame(doSthWithAnalyser);
+			// every time getByteFrequencyData(frequencyData) will return a different array
+			analyser.getByteFrequencyData(frequencyData);
+			visualizFrequencyData(frequencyData);
+		}
+
+		const stopBtn = document.querySelector("#stop");
+		stopBtn.addEventListener("click", function(e) {
+			clearInterval(timer);
+		});
+
+		const canvas = document.getElementById('canvas');
+        const cwidth = canvas.width;
+        const cheight = canvas.height - 2;
+        const meterWidth = 5; //width of the meters in the spectrum
+        const gap = 1; //gap between meters
+        const capHeight = 2;
+        const capStyle = '#fff';
+        const meterNum = cwidth / (meterWidth + gap); //count of the meters
+        const capYPositionArray = []; ////store the vertical position of hte caps for the preivous frame
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(1, '#05d6ff');
+        gradient.addColorStop(0.9, 'orange');
+        gradient.addColorStop(0, 'green');
+
+
+		function visualizFrequencyData(frequencyData) {
+			// console.log(frequencyData);
+			var step = Math.round(frequencyData.length / meterNum); //sample limited data from the total frequencyData
+            ctx.clearRect(0, 0, cwidth, cheight);
+            for (var i = 0; i < meterNum; i++) {
+                var value = frequencyData[i * step];
+                if (capYPositionArray.length < Math.round(meterNum)) {
+                    capYPositionArray.push(value);
+                };
+                ctx.fillStyle = capStyle;
+                //draw the cap, with transition effect
+                if (value < capYPositionArray[i]) {
+                    ctx.fillRect(i * (meterWidth+gap), cheight - (--capYPositionArray[i]), meterWidth, capHeight);
+                } else {
+                    ctx.fillRect(i * (meterWidth+gap), cheight - value, meterWidth, capHeight);
+                    capYPositionArray[i] = value;
+                };
+                ctx.fillStyle = gradient; //set the filllStyle to gradient for a better look
+                ctx.fillRect(i * (meterWidth+gap) /*meterWidth+gap*/ , cheight - value + capHeight, meterWidth, cheight); //the meter
+            }
+		}
+	</script>
+</body>
+</html>
