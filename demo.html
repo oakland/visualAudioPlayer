@@ -56,14 +56,15 @@
 			doSthWithAnalyser();
 		}
 
-		const bufferLength = analyser.frequencyBinCount; // 1024
+		// Uint8Array should be the same length as the frequencyBinCount
+		const bufferLength = analyser.frequencyBinCount; // default 1024
 		frequencyData = new Uint8Array(bufferLength);
 
 		// requestAnimationFrame 请求的应该是一个状态不断变化的函数，整个这个 app 里变化的就是 analyser.getByteFrequencyData(frequencyData) 这个函数所以
 		function doSthWithAnalyser() {
 			requestAnimationFrame(doSthWithAnalyser);
 			// every time getByteFrequencyData(frequencyData) will return a different array
-			analyser.getByteFrequencyData(frequencyData);
+			analyser.getByteFrequencyData(frequencyData); // fill the Uint8Array with data returned from getByteFrequencyData()
 			visualizFrequencyData(frequencyData);
 		}
 
